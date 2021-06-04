@@ -46,16 +46,21 @@ export default {
     const root = ref(null) 
     const content = ref(null)
     const visibleData  = ref([])
-
+    const startIndex = ref(0)
+    let lastMeasuredIndex = -1
+    const sizeAndOffsetCahce = {}  //缓存
 
     const contentHeight = computed(() => {
       const data = props.data
-      const itemSizeGetter  = props.itemSizeGetter
-      let total = 0
-      for (let i = 0; i < data.length; i++) {
-        total += itemSizeGetter.call(null,data[i],i)
+      const estimatedItemSize  = props.estimatedItemSize 
+      let itemCount = data.length
+      
+      if(lastMeasuredIndex >= 0){
+        const lastMeasuredSizeAndOffset  = getLastMeasuredSizeAndOffset()
+        return lastMeasuredSizeAndOffset.offset + lastMeasuredSizeAndOffset.size + (itemCount - 1 - lastMeasuredIndex) * estimatedItemSize
+      }else{
+        return itemCount * estimatedItemSize
       }
-      return total
     })
 
     onMounted(()=> {
@@ -80,28 +85,21 @@ export default {
 
 
     function findNearestItemIndex(scrollTop){
-      const data = props.data
+      const lastMeasuredOffset  = getLastMeasuredSizeAndOffset().offset
 
-      let total = 0
-      for (let i = 0, j = data.length; i < j; i++) {
-        const size = getItemSizeAndOffset(i).size
-        total += size
-        if(total >= scrollTop || i === j -1){
-          return i
-        }
-        
+      if(lastMeasuredOffset > scrollTop){
+        return binarySearch(0, lastMeasuredIndex, scrollTop)
+      }else{
+        return exponentialSearch(scrollTop)
       }
-      return 0
     }
-    const startIndex = ref(0)
-    let lastMeasuredIndex = -1
-    const sizeAndOffsetCahce = {}  //缓存
+  
     function getItemSizeAndOffset(index){
       const data = props.data
       const itemSizeGetter  = props.itemSizeGetter
 
       if(lastMeasuredIndex >= index){
-        return sizeAndOffsetCahce[index]
+        return sizeAndOffsetCahce[index] || { offset: 0, size: 0 };
       }
       let offset = 0
 
@@ -120,11 +118,51 @@ export default {
         }
         offset += size
       }
-      if(index > lastMeasuredIndex){
-        lastMeasuredIndex = index
-      }
+      lastMeasuredIndex = Math.min(index, data.length - 1)
       return sizeAndOffsetCahce[index]
       
+    }
+
+    function getLastMeasuredSizeAndOffset(){
+      return lastMeasuredIndex >= 0 ? sizeAndOffsetCahce[lastMeasuredIndex] : {offset:0 , size: 0}
+    }
+
+    function binarySearch(low, high, offset){
+      let index;
+
+      while (low <= high) {
+        const middle = Math.floor((low + high) / 2)
+        const middleOffset = getItemSizeAndOffset(middle).offset
+
+        if(middleOffset === offset){
+          index = middle
+          break
+        }else if(middleOffset > offset){
+          high = middle - 1
+        }else{
+          low = middle + 1
+        }
+      }
+
+      if(low > 0){
+        index = low -1
+      }
+
+      if(typeof index === 'undefined'){
+        index = 0
+      }
+
+      return index
+    }
+
+    function exponentialSearch(scrollTop){
+      let bound = 1
+      const data = props.data
+      const start = lastMeasuredIndex >=0 ? lastMeasuredIndex : 0
+      while (start + bound < data.length && getItemSizeAndOffset(start + bound).offset < scrollTop) {
+        bound = bound * 2;
+      }
+      return binarySearch(start + Math.floor(bound / 2), Math.min(start + bound, data.length), scrollTop)
     }
     return{
       root,
