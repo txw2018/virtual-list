@@ -1,6 +1,5 @@
 <template>
   <ListView 
-  
     :data="data"
     :item-size-getter="itemSizeGetter"
     :estimated-item-size="30"  
@@ -11,7 +10,8 @@
 import { ref } from 'vue'
 import ListView from './components/list-view/index.vue'
 
-const data = ref([])
+  const data = ref([])
+
   for (let i = 0; i < 10000; i++) {
     data.value.push({ value: i });
   }
