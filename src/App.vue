@@ -2,7 +2,6 @@
   <ListView 
     :data="data"
     :item-size-getter="itemSizeGetter"
-    :estimated-item-size="30"  
   />
 </template>
 

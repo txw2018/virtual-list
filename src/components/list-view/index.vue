@@ -35,18 +35,14 @@ export default {
     },
     itemSizeGetter: {
       type: Function
-    },
-    estimatedItemSize: {
-      type: Number,
-      default: 30
     }
-
   },
   setup(props) {
     const root = ref(null) 
     const content = ref(null)
     const visibleData  = ref([])
-
+    let lastMeasuredIndex = -1
+    const sizeAndOffsetCahce = {}  //缓存
 
     const contentHeight = computed(() => {
       const data = props.data
@@ -93,9 +89,7 @@ export default {
       }
       return 0
     }
-    const startIndex = ref(0)
-    let lastMeasuredIndex = -1
-    const sizeAndOffsetCahce = {}  //缓存
+
     function getItemSizeAndOffset(index){
       const data = props.data
       const itemSizeGetter  = props.itemSizeGetter
